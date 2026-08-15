@@ -67,7 +67,7 @@ class InferenceClient:
         if schema_instruction:
             full_system += f"\n\nCRITICAL: Output ONLY valid JSON matching this exact schema:\n{schema_instruction}\nDo not include any conversational filler, markdown backticks, or extra explanation outside the JSON object."
 
-        # Tier 1: High-Speed Groq API (llama-3.3-70b-versatile - sub-second response)
+        # Tier 1a: High-Speed Groq API (llama-3.3-70b-versatile)
         if self.cfg.groq_api_key and not self.cfg.groq_api_key.startswith("gsk_your"):
             try:
                 res = await self._call_openai_compatible(
@@ -75,15 +75,32 @@ class InferenceClient:
                     api_key=self.cfg.groq_api_key,
                     model=self.cfg.groq_model,
                     system_prompt=full_system,
-                    user_prompt=user_prompt
+                    user_prompt=user_prompt,
+                    timeout=8.0
                 )
                 if res:
-                    logger.info(f"Inference succeeded on Tier 1 (Groq API: {self.cfg.groq_model})")
+                    logger.info(f"Inference succeeded on Tier 1a (Groq API: {self.cfg.groq_model})")
                     return res
             except Exception as e:
-                logger.warning(f"Tier 1 (Groq API: {self.cfg.groq_model}) failed: {repr(e)}. Cascading to Tier 2...")
+                logger.warning(f"Tier 1a (Groq API: {self.cfg.groq_model}) failed: {repr(e)}. Cascading to Tier 1b...")
 
-        # Tier 2: NVIDIA NIM Primary
+            # Tier 1b: Groq Instant High-Quota Backup (llama-3.1-8b-instant - sub-300ms, separate rate limit)
+            try:
+                res = await self._call_openai_compatible(
+                    base_url=self.cfg.groq_base_url,
+                    api_key=self.cfg.groq_api_key,
+                    model="llama-3.1-8b-instant",
+                    system_prompt=full_system,
+                    user_prompt=user_prompt,
+                    timeout=8.0
+                )
+                if res:
+                    logger.info("Inference succeeded on Tier 1b (Groq API: llama-3.1-8b-instant)")
+                    return res
+            except Exception as e:
+                logger.warning(f"Tier 1b (Groq API: llama-3.1-8b-instant) failed: {repr(e)}. Cascading to Tier 2...")
+
+        # Tier 2: NVIDIA NIM Primary (25s timeout for deep models)
         if self.cfg.nvidia_api_key and not self.cfg.nvidia_api_key.startswith("nvapi-your"):
             try:
                 res = await self._call_openai_compatible(
@@ -91,7 +108,8 @@ class InferenceClient:
                     api_key=self.cfg.nvidia_api_key,
                     model=self.cfg.nvidia_primary_model,
                     system_prompt=full_system,
-                    user_prompt=user_prompt
+                    user_prompt=user_prompt,
+                    timeout=25.0
                 )
                 if res:
                     logger.info(f"Inference succeeded on Tier 2 (NVIDIA NIM: {self.cfg.nvidia_primary_model})")
@@ -106,7 +124,8 @@ class InferenceClient:
                     api_key=self.cfg.nvidia_api_key,
                     model=self.cfg.nvidia_fallback_model,
                     system_prompt=full_system,
-                    user_prompt=user_prompt
+                    user_prompt=user_prompt,
+                    timeout=25.0
                 )
                 if res:
                     logger.info(f"Inference succeeded on Tier 3 (NVIDIA Fallback: {self.cfg.nvidia_fallback_model})")
@@ -124,7 +143,8 @@ class InferenceClient:
         api_key: str,
         model: str,
         system_prompt: str,
-        user_prompt: str
+        user_prompt: str,
+        timeout: Optional[float] = None
     ) -> Optional[Dict[str, Any]]:
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -141,8 +161,9 @@ class InferenceClient:
             "max_tokens": 2048
         }
 
+        request_timeout = timeout if timeout is not None else self.timeout
         url = f"{base_url.rstrip('/')}/chat/completions"
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
+        async with httpx.AsyncClient(timeout=request_timeout) as client:
             resp = await client.post(url, headers=headers, json=payload)
             if resp.status_code != 200:
                 raise RuntimeError(f"HTTP {resp.status_code}: {resp.text}")
