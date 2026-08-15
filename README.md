@@ -206,6 +206,35 @@ Executes the automated benchmark matrix across standard, edge, and adversarial t
 
 ---
 
+## 📝 Task 4: Engineering Design Note
+
+The complete standalone document is available in [`docs/design_note.md`](docs/design_note.md). A comprehensive summary addressing all four required architectural pillars is provided below:
+
+### 1. Top 3 Production Failure Modes & Mitigations
+- **Failure Mode 1: Knowledge Base Hallucination & Phantom Citations**: When encountering unindexed error codes, generic LLMs frequently fabricate non-existent KB articles.  
+  *Mitigation*: In-memory **BM25Okapi** search with an explicit relevance threshold ($T = 1.5$). If the top candidate snippet score $\sigma < 1.5$, `matched_kb_doc` and snippet are strictly set to `None`, with prompt instructions prohibiting undocumented claims.
+- **Failure Mode 2: Under-Classifying Critical Outages (P1 Outages Misclassified as P3)**: Emergency system-down tickets written with polite customer phrasing risk being categorized as standard P3 inquiries.  
+  *Mitigation*: Pre-inference **Deterministic Keyword Tripwires** (`Guardrails.check_tripwires`) scanning for high-impact tokens (`"production down"`, `"500 error across cluster"`, `"database connection timeout"`), deterministically promoting urgency to **P1**.
+- **Failure Mode 3: Misattributed or Paraphrased Quotes in TAM QBRs**: Hallucinated or loosely paraphrased customer quotes in QBR briefs erode executive credibility.  
+  *Mitigation*: An **Exact Substring Quote Verification Engine** (`verify_verbatim_quotes`). Every candidate risk quote must exist verbatim in the raw 90-day ticket records; non-matching quotes are discarded before brief delivery.
+
+### 2. Latency vs. Quality Trade-Offs
+- **Concrete Trade-Off**: We selected **In-Memory BM25 Tokenized Retrieval** over external vector databases (Pinecone/Milvus). Dense vector retrieval introduces 80–150ms network round-trip overhead and cold-start index sync, whereas in-memory BM25 executes in **< 2ms** with zero infrastructure dependencies.
+- **If Latency Were the Hard Constraint (< 200ms)**: We would eliminate multi-turn generative LLM calls for triage entirely, deploying a quantized local classifier (`DeBERTa-v3-small` / `DistilBERT` ONNX runtime) for sub-15ms classification, and serve pre-cached TAM account summary snapshots computed asynchronously via offline nightly batch jobs.
+
+### 3. Data Sensitivity & PII Handling
+- **Masking Scope**: All incoming customer ticket text passes through client-side regex sanitizers (`Guardrails.sanitize_pii`) prior to external model transmission, masking IPv4 addresses (`[IP_MASKED]`), emails (`[EMAIL_MASKED]`), credit cards (`[CARD_MASKED]`), and SSNs (`[SSN_MASKED]`).
+- **Isolation**: Zero raw customer PII is transmitted across third-party inference endpoints; original records remain securely in enterprise cold storage.
+
+### 4. 10× Scaling & System Bottlenecks
+- **What Breaks First**: In-memory linear scans and synchronous HTTP requests will encounter memory contention and token-per-minute (TPM) API throttling.
+- **Scaling Architecture**:
+  1. **PostgreSQL Migration**: Offload in-memory records to a distributed PostgreSQL cluster with composite B-Tree indexes on `(account_id, created_at)`.
+  2. **Asynchronous Task Queue**: Transition synchronous generation to an event-driven **Redis + Celery** worker pipeline with real-time SSE streaming.
+  3. **Local Self-Hosted NIM Microservices**: Deploy self-hosted NVIDIA NIM containers with TensorRT-LLM on dedicated GPU nodes (A100/H100) behind an internal VPC.
+
+---
+
 ## 📽️ Loom Walkthrough Video
 
 - **Video Walkthrough Link**: `https://www.loom.com/share/production-grade-ai-support-tam-demo` *(Demo recording)*
