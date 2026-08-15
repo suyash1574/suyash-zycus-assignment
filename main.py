@@ -28,7 +28,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(na
 logger = logging.getLogger("main")
 
 app = FastAPI(
-    title="Support & TAM AI Platform",
+    title="SupportTAM AI Platform (Production-Grade AI for Technical Support & TAM Teams)",
     description="Production-Grade AI for Technical Support & TAM Teams powered by NVIDIA NIM & NOOA Architecture",
     version="1.0.0"
 )

@@ -24,7 +24,7 @@ async def test_dashboard_endpoint():
     async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/")
         assert response.status_code == 200
-        assert "Support &amp; TAM AI Platform" in response.text or "Support & TAM AI Platform" in response.text
+        assert "SupportTAM AI Platform" in response.text
         assert "Tab 1: Ticket Triage Studio" in response.text
 
 
