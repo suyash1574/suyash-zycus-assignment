@@ -1,6 +1,6 @@
 # Task 4: Engineering Design Note — Production Architecture & Reliability
 
-**Author**: Senior AI Systems Architect  
+**Author**: Suyash Zinjurke  
 **Project**: Production-Grade AI for Technical Support & TAM Teams  
 **Target Evaluation**: Task 4 (15 Marks)  
 **Document Length**: ~650 words  

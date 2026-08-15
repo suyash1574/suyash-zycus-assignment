@@ -40,9 +40,8 @@ htmlcov/
 .agents/
 .kilo/
 .specify/
+specs/
 
 # OS
 .DS_Store
 Thumbs.db
-
-specs/
