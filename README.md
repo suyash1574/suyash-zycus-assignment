@@ -83,6 +83,38 @@ flowchart TD
 
 ---
 
+## 🧠 Application Logic & Workflow Diagrams
+
+Detailed technical diagrams and function flows are documented in [`docs/application_logic.md`](docs/application_logic.md).
+
+### 1. Ticket Triage Logic Flow (Task 1)
+```mermaid
+flowchart LR
+    Ticket["Raw Ticket Input"] --> PII["1. PII Masking"]
+    PII --> Tripwire{"2. Tripwire Check"}
+    Tripwire -->|Outage| P1["Urgency = P1"]
+    Tripwire -->|Normal| BM25["3. BM25 Search (T=1.5)"]
+    P1 --> BM25
+    BM25 --> LLM["4. Multi-Tier LLM Gateway"]
+    LLM --> PostGuard["5. Injection Guardrail"]
+    PostGuard --> TriageRes["Structured Triage JSON"]
+```
+
+### 2. TAM QBR Brief Synthesis Flow (Task 2)
+```mermaid
+flowchart LR
+    AccID["Account ID"] --> Fetch["1. Account & 90-Day Tickets"]
+    Fetch --> Check0{"0 Tickets?"}
+    Check0 -->|Yes| ZeroBrief["Zero-Ticket Stable Brief"]
+    Check0 -->|No| Synthesis["2. LLM Multi-Doc Synthesis"]
+    Synthesis --> QuoteGate{"3. Exact Substring Verifier"}
+    QuoteGate -->|Match| VerifiedBrief["Deterministic 3-Section Brief"]
+    QuoteGate -->|Mismatch| DropQuote["Drop Hallucinated Quote"]
+    DropQuote --> VerifiedBrief
+```
+
+---
+
 ## 🚀 Quickstart & Installation
 
 ### 1. Clone & Install Dependencies
