@@ -314,11 +314,23 @@ class EvaluationHarness:
 
     def export_report(self, summary: EvalSummaryReport, filepath: str = "eval_report.json") -> None:
         """
-        Exports evaluation benchmark results to JSON file.
+        Exports evaluation benchmark results to JSON file and Markdown table.
         """
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(summary.model_dump(), f, indent=2)
         logger.info(f"Evaluation benchmark report exported to {filepath}")
+
+        # Also export Markdown table version (eval_report.md)
+        md_filepath = "eval_report.md"
+        with open(md_filepath, "w", encoding="utf-8") as f:
+            f.write("# Automated Evaluation Benchmark Report\n\n")
+            f.write(f"**Total Tests**: {summary.total_tests} | **Passed**: {summary.passed_tests} | **Failed**: {summary.failed_tests} | **Composite Quality Score**: {summary.average_score:.2f} ({int(summary.average_score * 100)}%)\n\n")
+            f.write("| Test ID | Task | Type | Status | Quality Score | Evaluation Details & Guardrail Notes |\n")
+            f.write("| :--- | :--- | :--- | :--- | :--- | :--- |\n")
+            for r in summary.results:
+                status_icon = "**PASSED**" if r.passed else "**FAILED**"
+                f.write(f"| `{r.test_id}` | {r.task_name} | {r.test_type} | {status_icon} | `{r.quality_score:.2f}` | {r.evaluation_notes} |\n")
+        logger.info(f"Evaluation benchmark Markdown report exported to {md_filepath}")
 
 
 eval_harness = EvaluationHarness()

@@ -172,10 +172,33 @@ Classification Rules:
   "draft_response": "string"
 }"""
 
-    async def triage(self, subject: str, body: str) -> TicketTriageResult:
+    async def triage(
+        self,
+        subject: Any = None,
+        body: Optional[str] = None
+    ) -> TicketTriageResult:
+        """
+        Ingests a raw support ticket as free-text, dictionary, or subject/body strings.
+        """
+        if isinstance(subject, dict):
+            raw_subject = subject.get("subject", "Support Inquiry")
+            raw_body = subject.get("body", str(subject))
+        elif hasattr(subject, "subject") and hasattr(subject, "body"):
+            raw_subject = subject.subject
+            raw_body = subject.body
+        elif body is None:
+            # Free-text input: extract first line as subject, remainder as body
+            text_str = str(subject).strip()
+            lines = text_str.split("\n", 1)
+            raw_subject = lines[0][:120]
+            raw_body = lines[1] if len(lines) > 1 else text_str
+        else:
+            raw_subject = str(subject)
+            raw_body = str(body)
+
         # Step 1: Pre-process and sanitize PII
-        clean_subject = Guardrails.sanitize_pii(subject)
-        clean_body = Guardrails.sanitize_pii(body)
+        clean_subject = Guardrails.sanitize_pii(raw_subject)
+        clean_body = Guardrails.sanitize_pii(raw_body)
         full_text = f"{clean_subject}\n\n{clean_body}"
 
         # Step 2: Evaluate keyword tripwires
