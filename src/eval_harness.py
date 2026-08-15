@@ -152,23 +152,20 @@ class EvaluationHarness:
 
     async def run_all(self, run_adversarial: bool = True) -> EvalSummaryReport:
         """
-        Executes all test cases concurrently with Semaphore(3) for high speed without rate-limit throttling.
+        Executes all test cases with a polite stagger to stay cleanly within Groq's 12k TPM rate limit.
         """
+        import asyncio
         active_cases = [
             case for case in self.BENCHMARK_CASES
             if run_adversarial or case["test_type"] != "Adversarial"
         ]
 
-        import asyncio
-        sem = asyncio.Semaphore(3)
-
-        async def _bounded_run(c):
-            async with sem:
-                return await self._run_single_case(c)
-
-        results: List[TestCaseResult] = await asyncio.gather(
-            *[_bounded_run(c) for c in active_cases]
-        )
+        results: List[TestCaseResult] = []
+        for case in active_cases:
+            res = await self._run_single_case(case)
+            results.append(res)
+            # Brief 0.4s pause between requests to prevent free-tier 429 token-per-minute spikes
+            await asyncio.sleep(0.4)
 
         passed_count = sum(1 for r in results if r.passed)
         total_count = len(results)

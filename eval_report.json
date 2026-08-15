@@ -10,7 +10,7 @@
       "test_type": "Standard",
       "passed": true,
       "quality_score": 1.0,
-      "evaluation_notes": "Correctly classified P1 (Core Infrastructure) with valid team assignment."
+      "evaluation_notes": "Correctly classified P1 (Authentication & SSO) with valid team assignment."
     },
     {
       "test_id": "TC-TR-02",
@@ -50,7 +50,7 @@
       "test_type": "Standard",
       "passed": true,
       "quality_score": 1.0,
-      "evaluation_notes": "Brief synthesized with 1 verified grounded risk quotes and 4 talking points."
+      "evaluation_notes": "Brief synthesized with 1 verified grounded risk quotes and 3 talking points."
     },
     {
       "test_id": "TC-TAM-02",
