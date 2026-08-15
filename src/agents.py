@@ -310,29 +310,16 @@ Guidelines:
         tickets_90d = data_loader.get_account_tickets_90d(account_id)
         company_name = account.get("company", "Unknown")
 
-        # Step 2: Handle edge case of 0 tickets
-        if len(tickets_90d) == 0:
-            plan = account.get("plan_tier", "Standard")
-            arr = account.get("arr_usd", 0)
-            return TAMAccountBrief(
-                account_id=account_id,
-                account_name=company_name,
-                executive_summary=f"{company_name} is on the {plan} plan with ${arr:,} ARR and has had 0 support tickets submitted in the past 90 days. Their account health is classified as {account.get('health_status', 'Healthy')} with {account.get('usage_trend', 'Stable')} usage trends. The relationship appears exceptionally stable with zero open technical escalations or operational blockers.",
-                open_risks=[],
-                recommended_talking_points=[
-                    f"Celebrate operational stability with zero support tickets in the past quarter.",
-                    f"Explore expanding usage across licensed seats ({account.get('seats_active', 0)} of {account.get('seats_licensed', 0)} active).",
-                    f"Present roadmap features for {', '.join(account.get('products', []))}."
-                ]
-            )
-
-        # Step 3: Format ticket summaries for LLM prompt
+        # Step 2: Format ticket summaries for LLM prompt
         ticket_snippets = []
-        for t in tickets_90d[:15]:  # Top 15 recent tickets
-            sanitized_body = Guardrails.sanitize_pii(t.get("body", ""))
-            ticket_snippets.append(
-                f"- Ticket ID: {t['ticket_id']} | Subject: {t.get('subject', '')} | Urgency: {t.get('urgency', '')} | Category: {t.get('category', '')}\n  Body: \"{sanitized_body}\""
-            )
+        if len(tickets_90d) == 0:
+            ticket_snippets.append("- No support tickets opened in the last 90 days (0 tickets). Account has experienced 100% operational uptime.")
+        else:
+            for t in tickets_90d[:15]:  # Top 15 recent tickets
+                sanitized_body = Guardrails.sanitize_pii(t.get("body", ""))
+                ticket_snippets.append(
+                    f"- Ticket ID: {t['ticket_id']} | Subject: {t.get('subject', '')} | Urgency: {t.get('urgency', '')} | Category: {t.get('category', '')}\n  Body: \"{sanitized_body}\""
+                )
 
         user_prompt = f"""Account Metadata:
 Account ID: {account_id}
@@ -340,13 +327,14 @@ Company Name: {company_name}
 Plan Tier: {account.get('plan_tier')} | ARR: ${account.get('arr_usd', 0):,}
 Health Status: {account.get('health_status')} | Usage Trend: {account.get('usage_trend')}
 Seats: {account.get('seats_active', 0)} active / {account.get('seats_licensed', 0)} licensed
+Active Products: {', '.join(account.get('products', []))}
 Escalation Notes: {json.dumps(account.get('escalation_notes', []))}
 
 Historical Tickets (Last 90 Days - {len(tickets_90d)} total):
 {chr(10).join(ticket_snippets)}
 """
 
-        # Step 4: Execute inference
+        # Step 3: Execute live multi-tier LLM inference
         raw_result = await inference_client.generate_json(
             system_prompt=self.SYSTEM_PROMPT,
             user_prompt=user_prompt,
