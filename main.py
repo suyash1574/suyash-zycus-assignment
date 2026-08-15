@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 
 from src.config import settings
 from src.schemas import (
@@ -118,6 +118,17 @@ async def run_evals_endpoint(payload: Optional[RunEvalRequest] = None):
     except Exception as e:
         logger.error(f"Evaluation harness error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/v1/stream-evals")
+async def stream_evals_endpoint(run_adversarial: bool = True):
+    """
+    Bonus: Real-time Server-Sent Events (SSE) stream yielding test progress live per case.
+    """
+    return StreamingResponse(
+        eval_harness.stream_all(run_adversarial=run_adversarial),
+        media_type="text/event-stream"
+    )
 
 
 # Helper sample endpoints for frontend loaders

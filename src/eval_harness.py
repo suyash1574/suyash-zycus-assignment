@@ -182,6 +182,59 @@ class EvaluationHarness:
         self.export_report(summary)
         return summary
 
+    async def stream_all(self, run_adversarial: bool = True):
+        """
+        Yields Server-Sent Events (SSE) in real time as each individual test case completes.
+        """
+        import asyncio
+        active_cases = [
+            case for case in self.BENCHMARK_CASES
+            if run_adversarial or case["test_type"] != "Adversarial"
+        ]
+        results: List[TestCaseResult] = []
+        total = len(active_cases)
+
+        for i, case in enumerate(active_cases, start=1):
+            res = await self._run_single_case(case)
+            results.append(res)
+
+            passed_so_far = sum(1 for r in results if r.passed)
+            failed_so_far = len(results) - passed_so_far
+            avg_score_so_far = round(sum(r.quality_score for r in results) / len(results), 2)
+
+            event_data = {
+                "type": "test_progress",
+                "test": res.model_dump(),
+                "progress": {
+                    "current": i,
+                    "total": total,
+                    "passed": passed_so_far,
+                    "failed": failed_so_far,
+                    "avg_score": avg_score_so_far
+                }
+            }
+            yield f"data: {json.dumps(event_data)}\n\n"
+            await asyncio.sleep(0.3)
+
+        passed_count = sum(1 for r in results if r.passed)
+        total_count = len(results)
+        avg_score = round(sum(r.quality_score for r in results) / total_count, 2) if total_count > 0 else 0.0
+
+        summary = EvalSummaryReport(
+            total_tests=total_count,
+            passed_tests=passed_count,
+            failed_tests=total_count - passed_count,
+            average_score=avg_score,
+            results=results
+        )
+        self.export_report(summary)
+
+        done_data = {
+            "type": "test_complete",
+            "summary": summary.model_dump()
+        }
+        yield f"data: {json.dumps(done_data)}\n\n"
+
     async def _eval_triage_case(self, case: Dict[str, Any]) -> Tuple[bool, float, str]:
         subject = case["subject"]
         body = case["body"]

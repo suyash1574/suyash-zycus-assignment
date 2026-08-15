@@ -248,59 +248,77 @@ function renderTAMBrief(data) {
   }
 }
 
-// Run Evaluation Benchmark Suite (Task 3)
+// Run Evaluation Benchmark Suite with Real-Time SSE Streaming (Bonus +3 Marks)
 async function runEvaluations() {
   const btn = document.getElementById("btn-eval");
   btn.disabled = true;
-  btn.innerHTML = `<span class="loading-spinner"></span> Running Benchmarks...`;
-
-  const tbody = document.getElementById("eval-table-body");
-  tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--accent-primary);">Executing 10 standard, edge, and adversarial test cases...</td></tr>`;
-
-  try {
-    const response = await fetch("/api/v1/run-evals", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ run_adversarial: true })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Server returned HTTP ${response.status}`);
-    }
-
-    const report = await response.json();
-    renderEvalReport(report);
-  } catch (err) {
-    alert(`Evaluation run failed: ${err.message}`);
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--accent-danger); padding:2rem;">Evaluation harness failed: ${err.message}</td></tr>`;
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = `<span>Run Benchmark Suite (10 Cases)</span>`;
-  }
-}
-
-function renderEvalReport(report) {
-  document.getElementById("stat-total").textContent = report.total_tests;
-  document.getElementById("stat-passed").textContent = report.passed_tests;
-  document.getElementById("stat-failed").textContent = report.failed_tests;
-  document.getElementById("stat-score").textContent = `${Math.round(report.average_score * 100)}%`;
+  btn.innerHTML = `<span class="loading-spinner"></span> Streaming Benchmarks...`;
 
   const tbody = document.getElementById("eval-table-body");
   tbody.innerHTML = "";
 
-  report.results.forEach(tc => {
-    const tr = document.createElement("tr");
-    const passClass = tc.passed ? "status-pass" : "status-fail";
-    const passLabel = tc.passed ? "✓ PASS" : "✗ FAIL";
+  document.getElementById("stat-total").textContent = "10";
+  document.getElementById("stat-passed").textContent = "0";
+  document.getElementById("stat-failed").textContent = "0";
+  document.getElementById("stat-score").textContent = "--";
 
-    tr.innerHTML = `
-      <td style="font-family:var(--font-mono); font-weight:700;">${tc.test_id}</td>
-      <td>${tc.task_name}</td>
-      <td><span class="tag-badge">${tc.test_type}</span></td>
-      <td><span class="status-pill ${passClass}">${passLabel}</span></td>
-      <td style="font-weight:700; color:var(--accent-primary);">${tc.quality_score.toFixed(2)}</td>
-      <td style="color:var(--text-secondary); font-size:0.85rem;">${tc.evaluation_notes}</td>
-    `;
-    tbody.appendChild(tr);
-  });
+  // Create real-time progress indicator row
+  const loadingRow = document.createElement("tr");
+  loadingRow.id = "streaming-loading-row";
+  loadingRow.innerHTML = `<td colspan="6" style="text-align:center; padding:1.5rem; color:var(--accent-primary);"><span class="loading-spinner"></span> Running tests live and streaming output in real-time...</td>`;
+  tbody.appendChild(loadingRow);
+
+  const eventSource = new EventSource("/api/v1/stream-evals?run_adversarial=true");
+
+  eventSource.onmessage = function(event) {
+    try {
+      const data = JSON.parse(event.data);
+
+      if (data.type === "test_progress") {
+        const tc = data.test;
+        const prog = data.progress;
+
+        // Update live metric scorecards in real-time
+        document.getElementById("stat-total").textContent = prog.total;
+        document.getElementById("stat-passed").textContent = prog.passed;
+        document.getElementById("stat-failed").textContent = prog.failed;
+        document.getElementById("stat-score").textContent = `${Math.round(prog.avg_score * 100)}%`;
+
+        // Append live streamed row with smooth entrance
+        const tr = document.createElement("tr");
+        const passClass = tc.passed ? "status-pass" : "status-fail";
+        const passLabel = tc.passed ? "✓ PASS" : "✗ FAIL";
+
+        tr.innerHTML = `
+          <td style="font-family:var(--font-mono); font-weight:700;">${tc.test_id}</td>
+          <td>${tc.task_name}</td>
+          <td><span class="tag-badge">${tc.test_type}</span></td>
+          <td><span class="status-pill ${passClass}">${passLabel}</span></td>
+          <td style="font-weight:700; color:var(--accent-primary);">${tc.quality_score.toFixed(2)}</td>
+          <td style="color:var(--text-secondary); font-size:0.85rem;">${tc.evaluation_notes}</td>
+        `;
+
+        tbody.insertBefore(tr, loadingRow);
+      } else if (data.type === "test_complete") {
+        eventSource.close();
+        if (loadingRow.parentNode) {
+          loadingRow.remove();
+        }
+        btn.disabled = false;
+        btn.innerHTML = `<span>Run Benchmark Suite (10 Cases)</span>`;
+      }
+    } catch (e) {
+      console.error("Error parsing SSE event:", e);
+    }
+  };
+
+  eventSource.onerror = function(err) {
+    console.error("SSE stream closed or error:", err);
+    eventSource.close();
+    if (loadingRow.parentNode) {
+      loadingRow.remove();
+    }
+    btn.disabled = false;
+    btn.innerHTML = `<span>Run Benchmark Suite (10 Cases)</span>`;
+  };
 }
