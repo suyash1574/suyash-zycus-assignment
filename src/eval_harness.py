@@ -120,48 +120,55 @@ class EvaluationHarness:
         }
     ]
 
+    async def _run_single_case(self, case: Dict[str, Any]) -> TestCaseResult:
+        test_id = case["test_id"]
+        task_name = case["task_name"]
+        test_type = case["test_type"]
+
+        try:
+            if task_name == "Task 1: Triage":
+                res, score, notes = await self._eval_triage_case(case)
+            else:
+                res, score, notes = await self._eval_tam_case(case)
+
+            return TestCaseResult(
+                test_id=test_id,
+                task_name=task_name,
+                test_type=test_type,
+                passed=res,
+                quality_score=round(score, 2),
+                evaluation_notes=notes
+            )
+        except Exception as e:
+            logger.error(f"Error executing test case {test_id}: {e}")
+            return TestCaseResult(
+                test_id=test_id,
+                task_name=task_name,
+                test_type=test_type,
+                passed=False,
+                quality_score=0.0,
+                evaluation_notes=f"Test failed with unhandled exception: {str(e)}"
+            )
+
     async def run_all(self, run_adversarial: bool = True) -> EvalSummaryReport:
         """
-        Executes all test cases and generates EvalSummaryReport.
+        Executes all test cases concurrently with Semaphore(3) for high speed without rate-limit throttling.
         """
-        results: List[TestCaseResult] = []
+        active_cases = [
+            case for case in self.BENCHMARK_CASES
+            if run_adversarial or case["test_type"] != "Adversarial"
+        ]
 
-        for case in self.BENCHMARK_CASES:
-            if not run_adversarial and case["test_type"] == "Adversarial":
-                continue
+        import asyncio
+        sem = asyncio.Semaphore(3)
 
-            test_id = case["test_id"]
-            task_name = case["task_name"]
-            test_type = case["test_type"]
+        async def _bounded_run(c):
+            async with sem:
+                return await self._run_single_case(c)
 
-            try:
-                if task_name == "Task 1: Triage":
-                    res, score, notes = await self._eval_triage_case(case)
-                else:
-                    res, score, notes = await self._eval_tam_case(case)
-
-                results.append(
-                    TestCaseResult(
-                        test_id=test_id,
-                        task_name=task_name,
-                        test_type=test_type,
-                        passed=res,
-                        quality_score=round(score, 2),
-                        evaluation_notes=notes
-                    )
-                )
-            except Exception as e:
-                logger.error(f"Error executing test case {test_id}: {e}")
-                results.append(
-                    TestCaseResult(
-                        test_id=test_id,
-                        task_name=task_name,
-                        test_type=test_type,
-                        passed=False,
-                        quality_score=0.0,
-                        evaluation_notes=f"Test failed with unhandled exception: {str(e)}"
-                    )
-                )
+        results: List[TestCaseResult] = await asyncio.gather(
+            *[_bounded_run(c) for c in active_cases]
+        )
 
         passed_count = sum(1 for r in results if r.passed)
         total_count = len(results)

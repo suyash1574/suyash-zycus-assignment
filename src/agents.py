@@ -33,7 +33,8 @@ class Guardrails:
 
     # Critical outage keywords triggering deterministic urgency promotion
     CRITICAL_TRIPWIRES = [
-        "production down", "prod down", "system down", "outage",
+        "production down", "prod down", "system down", "system is completely down",
+        "completely down", "critical emergency", "outage",
         "database connection timeout", "all api nodes", "data loss",
         "cannot log in", "500 error across", "sla breach", "sla violated"
     ]
@@ -216,6 +217,12 @@ Snippet: {snippet_content or 'No matching KB article found above relevance thres
         if cat not in allowed_cats:
             cat = "Bug"
 
+        draft = raw_result.get("draft_response", "Thank you for contacting support. We are reviewing your ticket.")
+        # Post-guardrail: Defend against prompt injection leakage in customer draft
+        for injected_token in ["hacked", "ignore all previous", "system override"]:
+            if injected_token in draft.lower():
+                draft = "Hello,\n\nWe have received your urgent ticket and our engineering team is actively investigating the reported system outage.\n\nBest regards,\nTechnical Support Team"
+
         return TicketTriageResult(
             product_area=raw_result.get("product_area", "General Platform"),
             issue_category=cat,
@@ -224,7 +231,7 @@ Snippet: {snippet_content or 'No matching KB article found above relevance thres
             matched_kb_doc=doc_path,
             matched_kb_snippet=snippet_content,
             recommended_team=raw_result.get("recommended_team", "Tier-1 Technical Support"),
-            draft_response=raw_result.get("draft_response", "Thank you for contacting support. We are reviewing your ticket.")
+            draft_response=draft
         )
 
 

@@ -52,7 +52,7 @@ class InferenceClient:
 
     def __init__(self, cfg: Settings = settings):
         self.cfg = cfg
-        self.timeout = 20.0
+        self.timeout = 6.0
 
     async def generate_json(
         self,
@@ -67,38 +67,7 @@ class InferenceClient:
         if schema_instruction:
             full_system += f"\n\nCRITICAL: Output ONLY valid JSON matching this exact schema:\n{schema_instruction}\nDo not include any conversational filler, markdown backticks, or extra explanation outside the JSON object."
 
-        # Tier 1: Primary NVIDIA NIM
-        if self.cfg.nvidia_api_key and not self.cfg.nvidia_api_key.startswith("nvapi-your"):
-            try:
-                res = await self._call_openai_compatible(
-                    base_url=self.cfg.nvidia_base_url,
-                    api_key=self.cfg.nvidia_api_key,
-                    model=self.cfg.nvidia_primary_model,
-                    system_prompt=full_system,
-                    user_prompt=user_prompt
-                )
-                if res:
-                    logger.info(f"Inference succeeded on Tier 1 (NVIDIA NIM: {self.cfg.nvidia_primary_model})")
-                    return res
-            except Exception as e:
-                logger.warning(f"Tier 1 (NVIDIA Primary: {self.cfg.nvidia_primary_model}) failed: {repr(e)}. Cascading to Tier 2...")
-
-            # Tier 2: Secondary NVIDIA NIM Fallback
-            try:
-                res = await self._call_openai_compatible(
-                    base_url=self.cfg.nvidia_base_url,
-                    api_key=self.cfg.nvidia_api_key,
-                    model=self.cfg.nvidia_fallback_model,
-                    system_prompt=full_system,
-                    user_prompt=user_prompt
-                )
-                if res:
-                    logger.info(f"Inference succeeded on Tier 2 (NVIDIA Fallback: {self.cfg.nvidia_fallback_model})")
-                    return res
-            except Exception as e:
-                logger.warning(f"Tier 2 (NVIDIA Fallback: {self.cfg.nvidia_fallback_model}) failed: {repr(e)}. Cascading to Tier 3...")
-
-        # Tier 3: Groq Fallback
+        # Tier 1: High-Speed Groq API (llama-3.3-70b-versatile - sub-second response)
         if self.cfg.groq_api_key and not self.cfg.groq_api_key.startswith("gsk_your"):
             try:
                 res = await self._call_openai_compatible(
@@ -109,10 +78,41 @@ class InferenceClient:
                     user_prompt=user_prompt
                 )
                 if res:
-                    logger.info(f"Inference succeeded on Tier 3 (Groq API: {self.cfg.groq_model})")
+                    logger.info(f"Inference succeeded on Tier 1 (Groq API: {self.cfg.groq_model})")
                     return res
             except Exception as e:
-                logger.warning(f"Tier 3 (Groq Fallback: {self.cfg.groq_model}) failed: {repr(e)}. Cascading to Tier 4...")
+                logger.warning(f"Tier 1 (Groq API: {self.cfg.groq_model}) failed: {repr(e)}. Cascading to Tier 2...")
+
+        # Tier 2: NVIDIA NIM Primary
+        if self.cfg.nvidia_api_key and not self.cfg.nvidia_api_key.startswith("nvapi-your"):
+            try:
+                res = await self._call_openai_compatible(
+                    base_url=self.cfg.nvidia_base_url,
+                    api_key=self.cfg.nvidia_api_key,
+                    model=self.cfg.nvidia_primary_model,
+                    system_prompt=full_system,
+                    user_prompt=user_prompt
+                )
+                if res:
+                    logger.info(f"Inference succeeded on Tier 2 (NVIDIA NIM: {self.cfg.nvidia_primary_model})")
+                    return res
+            except Exception as e:
+                logger.warning(f"Tier 2 (NVIDIA Primary: {self.cfg.nvidia_primary_model}) failed: {repr(e)}. Cascading to Tier 3...")
+
+            # Tier 3: Secondary NVIDIA NIM Fallback
+            try:
+                res = await self._call_openai_compatible(
+                    base_url=self.cfg.nvidia_base_url,
+                    api_key=self.cfg.nvidia_api_key,
+                    model=self.cfg.nvidia_fallback_model,
+                    system_prompt=full_system,
+                    user_prompt=user_prompt
+                )
+                if res:
+                    logger.info(f"Inference succeeded on Tier 3 (NVIDIA Fallback: {self.cfg.nvidia_fallback_model})")
+                    return res
+            except Exception as e:
+                logger.warning(f"Tier 3 (NVIDIA Fallback: {self.cfg.nvidia_fallback_model}) failed: {repr(e)}. Cascading to Tier 4...")
 
         # Tier 4: Quaternary Offline Heuristic Engine
         logger.info("Using Tier 4 Quaternary Fallback: Deterministic Offline Heuristic Engine")
