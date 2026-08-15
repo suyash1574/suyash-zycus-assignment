@@ -80,7 +80,7 @@ class InferenceClient:
                     logger.info(f"Inference succeeded on Tier 1 (NVIDIA NIM: {self.cfg.nvidia_primary_model})")
                     return res
             except Exception as e:
-                logger.warning(f"Tier 1 (NVIDIA Primary) failed: {e}. Cascading to Tier 2...")
+                logger.warning(f"Tier 1 (NVIDIA Primary: {self.cfg.nvidia_primary_model}) failed: {repr(e)}. Cascading to Tier 2...")
 
             # Tier 2: Secondary NVIDIA NIM Fallback
             try:
@@ -95,7 +95,7 @@ class InferenceClient:
                     logger.info(f"Inference succeeded on Tier 2 (NVIDIA Fallback: {self.cfg.nvidia_fallback_model})")
                     return res
             except Exception as e:
-                logger.warning(f"Tier 2 (NVIDIA Fallback) failed: {e}. Cascading to Tier 3...")
+                logger.warning(f"Tier 2 (NVIDIA Fallback: {self.cfg.nvidia_fallback_model}) failed: {repr(e)}. Cascading to Tier 3...")
 
         # Tier 3: Groq Fallback
         if self.cfg.groq_api_key and not self.cfg.groq_api_key.startswith("gsk_your"):
@@ -111,7 +111,7 @@ class InferenceClient:
                     logger.info(f"Inference succeeded on Tier 3 (Groq API: {self.cfg.groq_model})")
                     return res
             except Exception as e:
-                logger.warning(f"Tier 3 (Groq Fallback) failed: {e}. Cascading to Tier 4...")
+                logger.warning(f"Tier 3 (Groq Fallback: {self.cfg.groq_model}) failed: {repr(e)}. Cascading to Tier 4...")
 
         # Tier 4: Quaternary Offline Heuristic Engine
         logger.info("Using Tier 4 Quaternary Fallback: Deterministic Offline Heuristic Engine")
@@ -137,8 +137,7 @@ class InferenceClient:
             ],
             "temperature": 0.0,
             "top_p": 1.0,
-            "seed": 42,
-            "response_format": {"type": "json_object"}
+            "max_tokens": 2048
         }
 
         url = f"{base_url.rstrip('/')}/chat/completions"
@@ -148,15 +147,21 @@ class InferenceClient:
                 raise RuntimeError(f"HTTP {resp.status_code}: {resp.text}")
             data = resp.json()
             content = data["choices"][0]["message"]["content"]
-            # Clean markdown codeblocks if present
+            # Extract JSON from response content
             cleaned = content.strip()
-            if cleaned.startswith("```json"):
-                cleaned = cleaned[7:]
-            if cleaned.startswith("```"):
-                cleaned = cleaned[3:]
-            if cleaned.endswith("```"):
-                cleaned = cleaned[:-3]
-            return json.loads(cleaned.strip())
+            # If wrapped in markdown json block
+            if "```json" in cleaned:
+                cleaned = cleaned.split("```json")[1].split("```")[0].strip()
+            elif "```" in cleaned:
+                cleaned = cleaned.split("```")[1].split("```")[0].strip()
+            
+            # Find first { and last }
+            start = cleaned.find("{")
+            end = cleaned.rfind("}")
+            if start != -1 and end != -1:
+                cleaned = cleaned[start:end+1]
+
+            return json.loads(cleaned)
 
     def _heuristic_fallback(self, user_prompt: str) -> Dict[str, Any]:
         """
