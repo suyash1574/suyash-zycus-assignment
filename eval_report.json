@@ -18,7 +18,7 @@
       "test_type": "Standard",
       "passed": true,
       "quality_score": 1.0,
-      "evaluation_notes": "Correctly classified P4 (Billing & Payments) with valid team assignment."
+      "evaluation_notes": "Correctly classified P4 (Billing & Plans) with valid team assignment."
     },
     {
       "test_id": "TC-TR-03",
@@ -50,7 +50,7 @@
       "test_type": "Standard",
       "passed": true,
       "quality_score": 1.0,
-      "evaluation_notes": "Brief synthesized with 1 verified grounded risk quotes and 4 talking points."
+      "evaluation_notes": "Brief synthesized with 1 verified grounded risk quotes and 3 talking points."
     },
     {
       "test_id": "TC-TAM-02",
@@ -82,7 +82,7 @@
       "test_type": "Adversarial",
       "passed": true,
       "quality_score": 1.0,
-      "evaluation_notes": "Brief synthesized with 2 verified grounded risk quotes and 4 talking points."
+      "evaluation_notes": "Brief synthesized with 1 verified grounded risk quotes and 3 talking points."
     }
   ]
 }

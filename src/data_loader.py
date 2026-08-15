@@ -51,18 +51,26 @@ class DataLoader:
 
     def _build_indices(self) -> None:
         """
-        Builds in-memory O(1) hash maps for accounts, tickets, and account-to-ticket linkages.
+        Builds in-memory O(1) hash maps for accounts, tickets, and account/company linkages.
         """
         self.account_map = {acc["account_id"]: acc for acc in self.accounts}
         self.ticket_map = {tkt["ticket_id"]: tkt for tkt in self.tickets}
         self.account_tickets_map = {}
+        self.company_tickets_map = {}
 
         for tkt in self.tickets:
             acc_id = tkt.get("account_id")
+            company = tkt.get("company", "").strip().lower()
+            
             if acc_id:
                 if acc_id not in self.account_tickets_map:
                     self.account_tickets_map[acc_id] = []
                 self.account_tickets_map[acc_id].append(tkt)
+
+            if company:
+                if company not in self.company_tickets_map:
+                    self.company_tickets_map[company] = []
+                self.company_tickets_map[company].append(tkt)
 
     def get_account(self, account_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -90,11 +98,28 @@ class DataLoader:
 
     def get_account_tickets_90d(self, account_id: str, reference_date: Optional[datetime] = None) -> List[Dict[str, Any]]:
         """
-        Retrieves tickets for an account from the last 90 days.
-        If reference_date is not specified, calculates relative to the latest ticket timestamp in the dataset
-        to ensure consistency with synthetic datasets.
+        Retrieves tickets for an account from the last 90 days matching by account_id and company name.
+        Calculates relative to the latest ticket timestamp in the dataset.
         """
-        all_acc_tickets = self.account_tickets_map.get(account_id, [])
+        account = self.get_account(account_id)
+        company = account.get("company", "").strip().lower() if account else ""
+
+        seen_ids = set()
+        all_acc_tickets = []
+
+        # Lookup by account_id
+        for tkt in self.account_tickets_map.get(account_id, []):
+            if tkt["ticket_id"] not in seen_ids:
+                seen_ids.add(tkt["ticket_id"])
+                all_acc_tickets.append(tkt)
+
+        # Lookup by company name
+        if company:
+            for tkt in self.company_tickets_map.get(company, []):
+                if tkt["ticket_id"] not in seen_ids:
+                    seen_ids.add(tkt["ticket_id"])
+                    all_acc_tickets.append(tkt)
+
         if not all_acc_tickets:
             return []
 
