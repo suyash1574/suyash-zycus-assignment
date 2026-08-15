@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TicketTriageAPI",
+  "description": "API Contract for POST /api/v1/triage",
+  "type": "object",
+  "endpoints": {
+    "/api/v1/triage": {
+      "post": {
+        "summary": "Triage incoming support ticket",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["subject", "body"],
+                "properties": {
+                  "subject": { "type": "string", "example": "Production Database Connection Timeout across US-East cluster" },
+                  "body": { "type": "string", "example": "All API nodes are returning 500 errors. Customers cannot log in. Immediate escalation needed." }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Triage Result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "product_area",
+                    "issue_category",
+                    "urgency",
+                    "urgency_reasoning",
+                    "recommended_team",
+                    "draft_response"
+                  ],
+                  "properties": {
+                    "product_area": { "type": "string", "example": "Core Infrastructure" },
+                    "issue_category": { "type": "string", "example": "Bug" },
+                    "urgency": { "type": "string", "enum": ["P1", "P2", "P3", "P4"], "example": "P1" },
+                    "urgency_reasoning": { "type": "string", "example": "Critical database outage causing 500 errors across cluster." },
+                    "matched_kb_doc": { "type": ["string", "null"], "example": "performance-and-integrations.md" },
+                    "matched_kb_snippet": { "type": ["string", "null"], "example": "For database connection pool timeouts, inspect cluster active connections..." },
+                    "recommended_team": { "type": "string", "example": "Platform Infrastructure Tier-2" },
+                    "draft_response": { "type": "string", "example": "Thank you for alerting us. Our senior engineering team is actively investigating..." }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

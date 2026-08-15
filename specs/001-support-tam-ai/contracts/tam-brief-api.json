@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TAMAccountBriefAPI",
+  "description": "API Contract for GET /api/v1/tam-brief/{account_id}",
+  "type": "object",
+  "endpoints": {
+    "/api/v1/tam-brief/{account_id}": {
+      "get": {
+        "summary": "Generate deterministic 3-section TAM QBR health brief",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "example": "ACC-3847" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Grounded TAM Account Brief",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "account_id",
+                    "account_name",
+                    "executive_summary",
+                    "open_risks",
+                    "recommended_talking_points"
+                  ],
+                  "properties": {
+                    "account_id": { "type": "string", "example": "ACC-3847" },
+                    "account_name": { "type": "string", "example": "Initech" },
+                    "executive_summary": { "type": "string", "example": "Initech holds an Enterprise tier plan with $240k ARR but is currently flagged as At Risk due to declining seat usage. They experienced 7 open tickets in the past 90 days, including 2 critical P1 outages impacting engineering workflows. Strategic intervention is required during the upcoming QBR to prevent renewal attrition." },
+                    "open_risks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["risk_type", "severity", "ticket_id", "direct_quote"],
+                        "properties": {
+                          "risk_type": { "type": "string", "enum": ["Churn Risk", "Technical Escalation", "SLA Breach", "Stakeholder Frustration"] },
+                          "severity": { "type": "string", "enum": ["High", "Medium", "Low"] },
+                          "ticket_id": { "type": "string", "example": "TKT-10042" },
+                          "direct_quote": { "type": "string", "example": "Our Connectors pipeline has been failing since approximately yesterday morning. Error message: 'ERR_CONNECTION_TIMEOUT after 30s'" }
+                        }
+                      }
+                    },
+                    "recommended_talking_points": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                      "example": [
+                        "Address the recurring Connectors pipeline timeout resolution deployed in v3.1.3.",
+                        "Offer proactive enablement session for the 52 inactive engineering seats.",
+                        "Confirm new executive sponsor contact following VP Engineering transition."
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

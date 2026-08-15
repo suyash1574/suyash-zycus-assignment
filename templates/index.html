@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Support & TAM AI Platform | Production-Grade NVIDIA NIM Agent Studio</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="header">
+    <div class="header-brand">
+      <div class="logo-badge">NVIDIA NIM</div>
+      <div class="header-title">
+        <h1>Support & TAM AI Platform</h1>
+        <p>Production-Grade NOOA Intelligence for Tier-1/Tier-2 Support & TAM Teams</p>
+      </div>
+    </div>
+    <div class="header-meta">
+      <span class="tag-badge">Prompt: {{ prompt_version }}</span>
+      <span class="tag-badge">Llama-3.1-70B</span>
+      <span class="tag-badge" style="color:#10b981; border-color:rgba(16,185,129,0.3)">Deterministic (temp=0.0)</span>
+    </div>
+  </header>
+
+  <!-- Studio Navigation Tabs -->
+  <nav class="tabs-nav">
+    <button class="tab-btn active" onclick="switchTab('tab-triage')">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+      Tab 1: Ticket Triage Studio
+    </button>
+    <button class="tab-btn" onclick="switchTab('tab-tam')">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+      Tab 2: TAM QBR Health Brief
+    </button>
+    <button class="tab-btn" onclick="switchTab('tab-eval')">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+      Tab 3: Evaluation Suite
+    </button>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="main-content">
+
+    <!-- ====================================================================
+         Tab 1: Ticket Triage Studio
+         ==================================================================== -->
+    <div id="tab-triage" class="tab-pane active">
+      <div class="studio-grid">
+        <!-- Input Form -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Incoming Support Ticket</h2>
+            <div class="btn-group">
+              <select id="sample-ticket-select" onchange="loadSelectedTicket(this.value)">
+                <option value="">-- Quick Load Sample Ticket --</option>
+                <option value="p1-db">P1 Outage: US-East DB Timeout</option>
+                <option value="p4-billing">P4 Billing: VAT Invoice Update</option>
+                <option value="p2-sso">P2 Integration: Okta SAML Error</option>
+                <option value="p2-connector">P2 Bug: DataBridge Connection Timeout</option>
+                <option value="adversarial-override">Adversarial: Prompt Injection Attempt</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="triage-subject">Ticket Subject Line</label>
+            <input type="text" id="triage-subject" placeholder="e.g. Production Database Connection Timeout across US-East cluster">
+          </div>
+
+          <div class="form-group">
+            <label for="triage-body">Ticket Body Description</label>
+            <textarea id="triage-body" rows="8" placeholder="Paste or type full ticket message..."></textarea>
+          </div>
+
+          <div class="btn-group">
+            <button class="btn btn-primary" id="btn-triage" onclick="submitTriage()">
+              <span>Analyze & Triage Ticket</span>
+            </button>
+            <button class="btn" onclick="clearTriageForm()">Clear</button>
+          </div>
+        </div>
+
+        <!-- Output Result Panel -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Triage Classification & Draft</h2>
+            <span id="triage-status-badge" class="tag-badge">Awaiting Input</span>
+          </div>
+
+          <div id="triage-result-empty" style="text-align: center; color: var(--text-muted); padding: 3rem 1rem;">
+            Select a sample ticket or enter ticket details on the left, then click <strong>Analyze & Triage Ticket</strong>.
+          </div>
+
+          <div id="triage-result-content" class="result-box" style="display: none;">
+            <div class="badge-row">
+              <span class="field-label" style="margin-right: 0.5rem;">Urgency:</span>
+              <span id="res-urgency-badge" class="badge badge-P1">P1</span>
+              <span id="res-area-badge" class="badge badge-tag">Core Infrastructure</span>
+              <span id="res-category-badge" class="badge badge-tag">Bug</span>
+            </div>
+
+            <div>
+              <div class="field-label">Assigned Responder Team</div>
+              <div id="res-team" class="field-value" style="font-weight: 700; color: var(--accent-primary);"></div>
+            </div>
+
+            <div>
+              <div class="field-label">Technical Justification</div>
+              <div id="res-reasoning" class="field-value" style="color: var(--text-secondary);"></div>
+            </div>
+
+            <div>
+              <div class="field-label">Matched Knowledge Base Guide</div>
+              <div id="res-kb-doc" class="code-block" style="font-size: 0.8rem; margin-bottom: 0.4rem;"></div>
+              <div id="res-kb-snippet" class="field-value" style="font-size: 0.85rem; color: var(--text-secondary); background: rgba(15,23,42,0.6); padding: 0.5rem; border-radius: 4px;"></div>
+            </div>
+
+            <div>
+              <div class="field-label">Initial Customer Response Draft</div>
+              <div id="res-draft" class="code-block" style="color: #f8fafc; line-height: 1.6;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         Tab 2: TAM QBR Health Brief
+         ==================================================================== -->
+    <div id="tab-tam" class="tab-pane">
+      <div class="studio-grid">
+        <!-- Account Query Panel -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Account Selection & History</h2>
+          </div>
+
+          <div class="form-group">
+            <label for="tam-account-select">Select Customer Account (50 Profiles Loaded)</label>
+            <select id="tam-account-select" onchange="onAccountChange(this.value)">
+              {% for acc in accounts %}
+              <option value="{{ acc.account_id }}">
+                {{ acc.account_id }} - {{ acc.company }} ({{ acc.plan_tier }} | ${{ "{:,}".format(acc.arr_usd) }} ARR | {{ acc.health_status }})
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div id="account-quick-meta" class="result-box" style="gap: 0.75rem;">
+            <div>
+              <div class="field-label">Company & Tier</div>
+              <div id="meta-company" class="field-value" style="font-weight: 700;">Initech</div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+              <div>
+                <div class="field-label">ARR (USD)</div>
+                <div id="meta-arr" class="field-value">$240,000</div>
+              </div>
+              <div>
+                <div class="field-label">Health Status</div>
+                <div id="meta-health" class="field-value" style="color: #f87171;">At Risk</div>
+              </div>
+            </div>
+            <div>
+              <div class="field-label">Active Products</div>
+              <div id="meta-products" class="field-value" style="font-size: 0.85rem; color: var(--text-secondary);">DataBridge Pro, AnalyticsHub, WorkflowEngine</div>
+            </div>
+          </div>
+
+          <div class="btn-group">
+            <button class="btn btn-primary" id="btn-tam" onclick="generateTAMBrief()">
+              <span>Generate TAM QBR Brief (&lt; 5s)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Synthesized TAM Brief Panel -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Deterministic 3-Section QBR Brief</h2>
+            <span id="tam-status-badge" class="tag-badge">100% Verified Quotes</span>
+          </div>
+
+          <div id="tam-result-empty" style="text-align: center; color: var(--text-muted); padding: 3rem 1rem;">
+            Select an account on the left and click <strong>Generate TAM QBR Brief</strong> to synthesize 90-day ticket history.
+          </div>
+
+          <div id="tam-result-content" class="result-box" style="display: none; gap: 1.5rem;">
+            <!-- Section 1: Executive Summary -->
+            <div class="qbr-section">
+              <div class="field-label" style="font-size: 0.85rem; color: var(--accent-primary); font-weight: 700;">
+                1. Executive Summary (3–5 Sentences)
+              </div>
+              <div id="tam-exec-summary" class="field-value" style="line-height: 1.6; background: rgba(30,41,59,0.5); padding: 0.85rem; border-radius: 6px; border: 1px solid var(--border-color);"></div>
+            </div>
+
+            <!-- Section 2: Open Risks & Flagged Issues -->
+            <div class="qbr-section">
+              <div class="field-label" style="font-size: 0.85rem; color: var(--accent-danger); font-weight: 700;">
+                2. Open Risks & Verified Ticket Quotes
+              </div>
+              <div id="tam-risks-container" style="display: flex; flex-direction: column; gap: 0.75rem;"></div>
+            </div>
+
+            <!-- Section 3: Recommended Talking Points -->
+            <div class="qbr-section">
+              <div class="field-label" style="font-size: 0.85rem; color: var(--accent-success); font-weight: 700;">
+                3. Recommended QBR Talking Points
+              </div>
+              <ul id="tam-talking-points" class="talking-points-list"></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         Tab 3: Evaluation Suite
+         ==================================================================== -->
+    <div id="tab-eval" class="tab-pane">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2>Automated Quality & Adversarial Benchmark Harness</h2>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.2rem;">
+              Tests P1-P4 accuracy, 100% quote grounding, prompt-injection defenses, and boundary cases.
+            </p>
+          </div>
+          <button class="btn btn-primary" id="btn-eval" onclick="runEvaluations()">
+            <span>Run Benchmark Suite (10 Cases)</span>
+          </button>
+        </div>
+
+        <!-- Metrics Dashboard -->
+        <div class="stats-row">
+          <div class="stat-box">
+            <div id="stat-total" class="stat-value">10</div>
+            <div class="stat-label">Total Test Cases</div>
+          </div>
+          <div class="stat-box">
+            <div id="stat-passed" class="stat-value" style="color: var(--accent-success);">-</div>
+            <div class="stat-label">Passed Tests</div>
+          </div>
+          <div class="stat-box">
+            <div id="stat-failed" class="stat-value" style="color: var(--accent-danger);">-</div>
+            <div class="stat-label">Failed Tests</div>
+          </div>
+          <div class="stat-box">
+            <div id="stat-score" class="stat-value" style="color: var(--accent-primary);">-</div>
+            <div class="stat-label">Composite Quality Score</div>
+          </div>
+        </div>
+
+        <!-- Test Results Table -->
+        <div style="overflow-x: auto;">
+          <table class="eval-table">
+            <thead>
+              <tr>
+                <th>Test ID</th>
+                <th>Task</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Quality Score</th>
+                <th>Evaluation Details & Guardrail Notes</th>
+              </tr>
+            </thead>
+            <tbody id="eval-table-body">
+              <tr>
+                <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                  Click <strong>Run Benchmark Suite</strong> to execute the full evaluation matrix.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

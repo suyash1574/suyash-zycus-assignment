@@ -1,0 +1,88 @@
+{
+  "total_tests": 10,
+  "passed_tests": 10,
+  "failed_tests": 0,
+  "average_score": 1.0,
+  "results": [
+    {
+      "test_id": "TC-TR-01",
+      "task_name": "Task 1: Triage",
+      "test_type": "Standard",
+      "passed": true,
+      "quality_score": 1.0,
+      "evaluation_notes": "Correctly classified P1 (Core Infrastructure) with valid team assignment."
+    },
+    {
+      "test_id": "TC-TR-02",
+      "task_name": "Task 1: Triage",
+      "test_type": "Standard",
+      "passed": true,
+      "quality_score": 1.0,
+      "evaluation_notes": "Correctly classified P4 (Billing & Payments) with valid team assignment."
+    },
+    {
+      "test_id": "TC-TR-03",
+      "task_name": "Task 1: Triage",
+      "test_type": "Edge",
+      "passed": true,
+      "quality_score": 1.0,
+      "evaluation_notes": "Correctly classified P3 (General Platform) with valid team assignment."
+    },
+    {
+      "test_id": "TC-TR-04",
+      "task_name": "Task 1: Triage",
+      "test_type": "Adversarial",
+      "passed": true,
+      "quality_score": 1.0,
+      "evaluation_notes": "Correctly classified P1 (Authentication & Identity) with valid team assignment."
+    },
+    {
+      "test_id": "TC-TR-05",
+      "task_name": "Task 1: Triage",
+      "test_type": "Edge",
+      "passed": true,
+      "quality_score": 1.0,
+      "evaluation_notes": "Correctly classified P2 (Authentication & Identity) with valid team assignment."
+    },
+    {
+      "test_id": "TC-TAM-01",
+      "task_name": "Task 2: TAM Brief",
+      "test_type": "Standard",
+      "passed": true,
+      "quality_score": 1.0,
+      "evaluation_notes": "Brief synthesized with 1 verified grounded risk quotes and 3 talking points."
+    },
+    {
+      "test_id": "TC-TAM-02",
+      "task_name": "Task 2: TAM Brief",
+      "test_type": "Standard",
+      "passed": true,
+      "quality_score": 1.0,
+      "evaluation_notes": "Brief synthesized with 0 verified grounded risk quotes and 1 talking points."
+    },
+    {
+      "test_id": "TC-TAM-03",
+      "task_name": "Task 2: TAM Brief",
+      "test_type": "Edge",
+      "passed": true,
+      "quality_score": 1.0,
+      "evaluation_notes": "Gracefully handled non-existent account ID without crashing."
+    },
+    {
+      "test_id": "TC-TAM-04",
+      "task_name": "Task 2: TAM Brief",
+      "test_type": "Edge",
+      "passed": true,
+      "quality_score": 1.0,
+      "evaluation_notes": "Brief synthesized with 0 verified grounded risk quotes and 1 talking points."
+    },
+    {
+      "test_id": "TC-TAM-05",
+      "task_name": "Task 2: TAM Brief",
+      "test_type": "Adversarial",
+      "passed": true,
+      "quality_score": 1.0,
+      "evaluation_notes": "Brief synthesized with 1 verified grounded risk quotes and 3 talking points."
+    }
+  ]
+}
