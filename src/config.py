@@ -5,6 +5,7 @@ NVIDIA NIM (Llama-3.1-70B) -> NVIDIA NIM (Nemotron-70B) -> Groq (Llama-3.3-70B) 
 """
 
 import os
+import re
 import json
 import logging
 from typing import Dict, Any, Optional, List
@@ -146,20 +147,29 @@ class InferenceClient:
             if resp.status_code != 200:
                 raise RuntimeError(f"HTTP {resp.status_code}: {resp.text}")
             data = resp.json()
-            content = data["choices"][0]["message"]["content"]
-            # Extract JSON from response content
-            cleaned = content.strip()
+            msg = data["choices"][0]["message"]
+            content = msg.get("content") or ""
+            
+            # If content is empty (e.g. reasoning model output), fallback to reasoning_content
+            if not content.strip() and "reasoning_content" in msg:
+                content = msg["reasoning_content"]
+
+            # Remove <think> ... </think> reasoning blocks if present
+            cleaned = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL).strip()
+
             # If wrapped in markdown json block
             if "```json" in cleaned:
                 cleaned = cleaned.split("```json")[1].split("```")[0].strip()
             elif "```" in cleaned:
                 cleaned = cleaned.split("```")[1].split("```")[0].strip()
             
-            # Find first { and last }
+            # Find outermost { and }
             start = cleaned.find("{")
             end = cleaned.rfind("}")
             if start != -1 and end != -1:
                 cleaned = cleaned[start:end+1]
+            else:
+                raise ValueError(f"No JSON object found in model output: {cleaned[:100]}")
 
             return json.loads(cleaned)
 
